@@ -11,7 +11,15 @@
   "use strict";
 
   var Input = React.createClass({
-    render: function () {
+    focus: function () {
+      this.refs.input.focus();
+    }
+
+    , blur: function () {
+      this.refs.input.blur();
+    }
+
+    , render: function () {
       var ns = this.props.ns;
 
       var inputClass = this.props.classNames.input || ns + "tagsinput-input";
@@ -30,9 +38,10 @@
         // https://gist.github.com/sebmarkbage/a6e220b7097eb3c79ab7
         // avoid dependency on ES6's `Object.assign()`
         React.__spread({}, this.props, {
-          type: "text"
-        , className: inputClass
-        , placeholder: this.props.placeholder
+            type: "text"
+          , ref: "input"
+          , className: inputClass
+          , placeholder: this.props.placeholder
         })
       );
     }
@@ -286,15 +295,17 @@
     }
 
     , focus: function () {
-      this.refs.input.getDOMNode().focus();
+      this.refs.input.focus();
     }
 
     , blur: function () {
-      this.refs.input.getDOMNode().blur();
+      this.refs.input.blur();
     }
 
     , handleClick: function (e) {
-      if (e.target === this.getDOMNode()) {
+      var isDivClass = this.refs.div.className === e.target.className;
+
+      if (isDivClass) {
         this.focus();
       }
 
@@ -325,8 +336,9 @@
 
       return (
         React.createElement("div", {
-          style: this.props.style,
-          className: this.props.classNames.div || ns + "tagsinput"
+          style: this.props.style
+          , className: this.props.classNames.div || ns + "tagsinput"
+          , ref: "div"
           , onClick: this.handleClick
         }, tagNodes, React.createElement(Input, {
           ref: "input"

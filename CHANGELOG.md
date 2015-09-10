@@ -1,3 +1,7 @@
+### 1.5.0-beta1 (2015-09-10)
+
+* React 0.14
+
 ### 1.4.3 (2015-08-18)
 
 * `blur` method for tag input.

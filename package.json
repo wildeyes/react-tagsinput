@@ -1,16 +1,17 @@
 {
   "name": "react-tagsinput",
-  "version": "1.4.3",
+  "version": "1.5.0-beta1",
   "description": "Simple react.js component for inputing tags",
   "main": "react-tagsinput.js",
   "peerDependencies": {
-    "react": "^0.13.0"
+    "react": "0.14.0-beta3"
   },
   "devDependencies": {
     "jsdom": "^3.0.2"
     , "coveralls": "^2.11.2"
     , "mocha": "^2.1.0"
     , "istanbul": "^0.3.5"
+    , "react-dom": "0.14.0-beta3"
   },
   "scripts": {
     "test": "mocha"
