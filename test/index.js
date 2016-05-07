@@ -44,7 +44,7 @@ class TestComponent extends React.Component {
 }
 
 function randstring() {
-  return +new Date() + "";
+  return +new Date() + "_" + Math.floor(1000000 * Math.random());
 }
 
 function change(comp, value) {
@@ -69,6 +69,10 @@ function blur(comp) {
 
 function click(comp) {
   TestUtils.Simulate.click(comp);
+}
+
+function mouseover(comp) {
+  TestUtils.Simulate.mouseOver(comp);
 }
 
 function add(comp, tag) {
@@ -381,6 +385,95 @@ describe("TagsInput", () => {
       let comp = TestUtils.renderIntoDocument(<TestComponent />);
 
       comp.tagsinput().blur();
+    });
+  });
+
+  describe("suggestions", () => {
+    it("add a tag from suggestions by clicking", () => {
+      let suggestions = ["t" + randstring(), "t" + randstring(), "t" + randstring()];
+      let comp = TestUtils.renderIntoDocument(<TestComponent suggestions={suggestions} />);
+
+      change(comp, "t");
+
+      let suggested = allClass(comp, "react-tagsinput-suggestion");
+
+      assert.equal(suggestions.length, suggested.length, "we should see all suggestions")
+
+      click(suggested[0]);
+
+      assert.equal(comp.len(), 1, "there should be one tag");
+      assert.equal(comp.tag(0), suggestions[0], "it should be the first suggestion");
+    });
+
+    it("add a tag from suggestions by selection with arrow keys", () => {
+      let suggestions = ["t" + randstring(), "t" + randstring(), "t" + randstring()];
+      let comp = TestUtils.renderIntoDocument(<TestComponent suggestions={suggestions} />);
+
+      change(comp, "t");
+      keyDown(comp, 40);
+      keyDown(comp, 40);
+      keyDown(comp, 38);
+      keyDown(comp, 13);
+
+      assert.equal(comp.len(), 1, "there should be one tag");
+      assert.equal(comp.tag(0), suggestions[0], "it should be the first suggestion");
+    });
+
+    it("add a tag from suggestions by selection with mouse", () => {
+      let suggestions = ["t" + randstring(), "t" + randstring(), "t" + randstring()];
+      let comp = TestUtils.renderIntoDocument(<TestComponent suggestions={suggestions} />);
+
+      change(comp, "t");
+
+      let suggested = allClass(comp, "react-tagsinput-suggestion");
+
+      mouseover(suggested[0]);
+      keyDown(comp, 13);
+
+      assert.equal(comp.len(), 1, "there should be one tag");
+      assert.equal(comp.tag(0), suggestions[0], "it should be the first suggestion");
+    });
+
+    it("add only tags from suggestions", () => {
+      let suggestions = ["t" + randstring(), "t" + randstring(), "t" + randstring()];
+      let comp = TestUtils.renderIntoDocument(<TestComponent onlySuggested={true} suggestions={suggestions} />);
+
+      add(comp, randstring());
+      assert.equal(comp.len(), 0, "there should be no tags");
+
+      change(comp, "t");
+
+      let suggested = allClass(comp, "react-tagsinput-suggestion");
+
+      assert.equal(suggestions.length, suggested.length, "we should see all suggestions")
+
+      keyDown(comp, 38)
+      keyDown(comp, 13)
+
+      assert.equal(comp.len(), 1, "there should be one tag");
+      assert.equal(comp.tag(0), suggestions[0], "it should be the first suggestion");
+    });
+
+    it("add tags from suggestions that are unique", () => {
+      let suggestions = ["t" + randstring(), "t" + randstring(), "t" + randstring()];
+      let comp = TestUtils.renderIntoDocument(<TestComponent onlyUnique={true} suggestions={suggestions} />);
+
+      change(comp, "t");
+
+      let suggested1 = allClass(comp, "react-tagsinput-suggestion");
+
+      assert.equal(suggestions.length, suggested1.length, "we should see all")
+
+      click(suggested1[0]);
+
+      assert.equal(comp.len(), 1, "there should be one tag");
+      assert.equal(comp.tag(0), suggestions[0], "it should be the first suggestion");
+
+      change(comp, "t");
+
+      let suggested2 = allClass(comp, "react-tagsinput-suggestion");
+
+      assert.equal(suggestions.length - 1, suggested2.length, "we should see all but one suggestion")
     });
   });
 

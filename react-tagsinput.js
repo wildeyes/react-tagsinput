@@ -29,6 +29,9 @@
 
   var _React = _interopRequireDefault(_react);
 
+  var UP_ARROW_KEY_CODE = 38;
+  var DOWN_ARROW_KEY_CODE = 40;
+
   function uniq(arr) {
     var out = [];
 
@@ -80,12 +83,17 @@
     onChange: _React['default'].PropTypes.func
   };
 
-  function defaultRenderLayout(tagComponents, inputComponent) {
+  function defaultRenderLayout(tagComponents, inputComponent, suggestionsComponent) {
     return _React['default'].createElement(
       'span',
       null,
       tagComponents,
-      inputComponent
+      _React['default'].createElement(
+        'span',
+        { style: { display: 'inline-block' } },
+        inputComponent,
+        suggestionsComponent
+      )
     );
   }
 
@@ -95,6 +103,82 @@
     });
   }
 
+  function defaultOnSuggest(tag, tags, suggestions, onlyUnique) {
+    if (tag.length === 0) {
+      return [];
+    }
+
+    var normalize = function normalize(s) {
+      return s.toLowerCase();
+    };
+
+    var suggested = suggestions.filter(function (s) {
+      return normalize(s).startsWith(normalize(tag));
+    });
+
+    if (onlyUnique) {
+      suggested = suggested.filter(function (s) {
+        return tags.indexOf(s) === -1;
+      });
+    }
+
+    return suggested.slice(0, 5);
+  }
+
+  function defaultRenderSuggestions(props) {
+    var tag = props.tag;
+    var suggested = props.suggested;
+    var selected = props.selected;
+    var classNameSuggestion = props.classNameSuggestion;
+    var classNameSelected = props.classNameSelected;
+    var onClickSuggestion = props.onClickSuggestion;
+    var onMouseOverSuggestion = props.onMouseOverSuggestion;
+
+    var other = _objectWithoutProperties(props, ['tag', 'suggested', 'selected', 'classNameSuggestion', 'classNameSelected', 'onClickSuggestion', 'onMouseOverSuggestion']);
+
+    var suggestionNodes = suggested.map(function (s, i) {
+      var className = classNameSuggestion + (i === selected ? ' ' + classNameSelected : '');
+      var start = s.slice(0, tag.length);
+      var end = s.slice(tag.length);
+
+      return _React['default'].createElement(
+        'li',
+        {
+          key: i,
+          onMouseOver: function (e) {
+            return onMouseOverSuggestion(e, i);
+          },
+          onClick: function (e) {
+            return onClickSuggestion(e, i);
+          },
+          className: className
+        },
+        _React['default'].createElement(
+          'u',
+          null,
+          start
+        ),
+        end
+      );
+    });
+
+    return _React['default'].createElement(
+      'ul',
+      other,
+      suggestionNodes
+    );
+  }
+
+  defaultRenderSuggestions.propTypes = {
+    tag: _React['default'].PropTypes.string,
+    suggested: _React['default'].PropTypes.array,
+    selected: _React['default'].PropTypes.number,
+    classNameSuggestion: _React['default'].PropTypes.string,
+    classNameSelected: _React['default'].PropTypes.string,
+    onClickSuggestion: _React['default'].PropTypes.func,
+    onMouseOverSuggestion: _React['default'].PropTypes.func
+  };
+
   var TagsInput = (function (_React$Component) {
     _inherits(TagsInput, _React$Component);
 
@@ -102,7 +186,7 @@
       _classCallCheck(this, TagsInput);
 
       _get(Object.getPrototypeOf(TagsInput.prototype), 'constructor', this).call(this);
-      this.state = { tag: '' };
+      this.state = { tag: '', suggested: [], selected: 0 };
       this.focus = this.focus.bind(this);
       this.blur = this.blur.bind(this);
     }
@@ -119,7 +203,7 @@
     }, {
       key: '_clearInput',
       value: function _clearInput() {
-        this.setState({ tag: '' });
+        this.setState({ tag: '', suggested: [], selected: 0 });
       }
     }, {
       key: '_addTags',
@@ -128,10 +212,11 @@
         var validationRegex = _props.validationRegex;
         var onChange = _props.onChange;
         var onlyUnique = _props.onlyUnique;
+        var onlySuggested = _props.onlySuggested;
         var maxTags = _props.maxTags;
         var value = _props.value;
+        var suggestions = _props.suggestions;
 
-        // 1. Strip non-unique tags
         if (onlyUnique) {
           tags = uniq(tags);
           tags = tags.filter(function (tag) {
@@ -139,7 +224,12 @@
           });
         }
 
-        // 2. Strip invalid tags
+        if (onlySuggested) {
+          tags = tags.filter(function (tag) {
+            return suggestions.indexOf(tag) > -1;
+          });
+        }
+
         tags = tags.filter(function (tag) {
           return validationRegex.test(tag);
         });
@@ -147,13 +237,11 @@
           return tag.trim().length > 0;
         });
 
-        // 3. Strip extras based on limit
         if (maxTags >= 0) {
           var remainingLimit = Math.max(maxTags - value.length, 0);
           tags = tags.slice(0, remainingLimit);
         }
 
-        // 4. Add remaining tags to value
         if (tags.length > 0) {
           var newValue = value.concat(tags);
           onChange(newValue);
@@ -168,7 +256,7 @@
     }, {
       key: 'blur',
       value: function blur() {
-        this.refs.input.focus();
+        this.refs.input.blur();
       }
     }, {
       key: 'handlePaste',
@@ -195,19 +283,41 @@
         var value = _props3.value;
         var removeKeys = _props3.removeKeys;
         var addKeys = _props3.addKeys;
-        var tag = this.state.tag;
+        var onlySuggested = _props3.onlySuggested;
+        var _state = this.state;
+        var tag = _state.tag;
+        var selected = _state.selected;
+        var suggested = _state.suggested;
 
         var empty = tag === '';
-        var add = addKeys.indexOf(e.keyCode) !== -1;
-        var remove = removeKeys.indexOf(e.keyCode) !== -1;
+        var code = e.keyCode;
+        var add = addKeys.indexOf(code) !== -1 && !empty;
+        var remove = removeKeys.indexOf(code) !== -1 && value.length > 0 && empty;
+        var up = code === UP_ARROW_KEY_CODE;
+        var down = code === DOWN_ARROW_KEY_CODE;
+        var suggestion = suggested[selected];
 
-        if (add) {
+        if (up || down || add || remove) {
           e.preventDefault();
-          this._addTags([tag]);
         }
 
-        if (remove && value.length > 0 && empty) {
-          e.preventDefault();
+        if (up) {
+          this.setState({ selected: Math.max(onlySuggested ? 0 : -1, selected - 1) });
+        }
+
+        if (down) {
+          this.setState({ selected: Math.min(selected + 1, suggested.length - 1) });
+        }
+
+        if (add) {
+          if (suggestion) {
+            this._addTags([suggestion]);
+          } else {
+            this._addTags([tag]);
+          }
+        }
+
+        if (remove) {
           this._removeTag(value.length - 1);
         }
       }
@@ -219,8 +329,29 @@
         }
       }
     }, {
+      key: 'handleClickSuggestion',
+      value: function handleClickSuggestion(e, i) {
+        e.preventDefault();
+        var suggested = this.state.suggested;
+
+        var suggestion = suggested[i];
+        this._addTags([suggestion]);
+        this.focus();
+      }
+    }, {
+      key: 'handleMouseOverSuggestion',
+      value: function handleMouseOverSuggestion(e, i) {
+        this.setState({ selected: i });
+      }
+    }, {
       key: 'handleChange',
       value: function handleChange(e) {
+        var _props4 = this.props;
+        var value = _props4.value;
+        var onSuggest = _props4.onSuggest;
+        var suggestions = _props4.suggestions;
+        var onlyUnique = _props4.onlyUnique;
+        var onlySuggested = _props4.onlySuggested;
         var onChange = this.props.inputProps.onChange;
 
         var tag = e.target.value;
@@ -229,7 +360,10 @@
           onChange(e);
         }
 
-        this.setState({ tag: tag });
+        var suggested = onSuggest(tag, value, suggestions, onlyUnique);
+        var selected = onlySuggested ? 0 : -1;
+
+        this.setState({ tag: tag, suggested: suggested, selected: selected });
       }
     }, {
       key: 'handleOnBlur',
@@ -258,20 +392,26 @@
       value: function render() {
         var _this = this;
 
-        var _props4 = this.props;
-        var value = _props4.value;
-        var onChange = _props4.onChange;
-        var inputProps = _props4.inputProps;
-        var tagProps = _props4.tagProps;
-        var renderLayout = _props4.renderLayout;
-        var renderTag = _props4.renderTag;
-        var renderInput = _props4.renderInput;
-        var addKeys = _props4.addKeys;
-        var removeKeys = _props4.removeKeys;
+        var _props5 = this.props;
+        var value = _props5.value;
+        var onChange = _props5.onChange;
+        var inputProps = _props5.inputProps;
+        var tagProps = _props5.tagProps;
+        var renderLayout = _props5.renderLayout;
+        var renderTag = _props5.renderTag;
+        var renderInput = _props5.renderInput;
+        var renderSuggestions = _props5.renderSuggestions;
+        var addKeys = _props5.addKeys;
+        var removeKeys = _props5.removeKeys;
+        var suggestionsProps = _props5.suggestionsProps;
+        var onlyUnique = _props5.onlyUnique;
 
-        var other = _objectWithoutProperties(_props4, ['value', 'onChange', 'inputProps', 'tagProps', 'renderLayout', 'renderTag', 'renderInput', 'addKeys', 'removeKeys']);
+        var other = _objectWithoutProperties(_props5, ['value', 'onChange', 'inputProps', 'tagProps', 'renderLayout', 'renderTag', 'renderInput', 'renderSuggestions', 'addKeys', 'removeKeys', 'suggestionsProps', 'onlyUnique']);
 
-        var tag = this.state.tag;
+        var _state2 = this.state;
+        var tag = _state2.tag;
+        var suggested = _state2.suggested;
+        var selected = _state2.selected;
 
         var tagComponents = value.map(function (tag, index) {
           return renderTag(_extends({ key: index, tag: tag, onRemove: _this.handleRemove.bind(_this) }, tagProps));
@@ -286,10 +426,18 @@
           onBlur: this.handleOnBlur.bind(this)
         }, this.inputProps()));
 
+        var suggestionsComponent = renderSuggestions(_extends({
+          tag: tag,
+          suggested: suggested,
+          selected: selected,
+          onClickSuggestion: this.handleClickSuggestion.bind(this),
+          onMouseOverSuggestion: this.handleMouseOverSuggestion.bind(this)
+        }, suggestionsProps));
+
         return _React['default'].createElement(
           'div',
           _extends({ ref: 'div', onClick: this.handleClick.bind(this) }, other),
-          renderLayout(tagComponents, inputComponent)
+          renderLayout(tagComponents, inputComponent, suggestionsComponent)
         );
       }
     }], [{
@@ -309,7 +457,12 @@
         onlyUnique: _React['default'].PropTypes.bool,
         value: _React['default'].PropTypes.array.isRequired,
         maxTags: _React['default'].PropTypes.number,
-        validationRegex: _React['default'].PropTypes.instanceOf(RegExp)
+        validationRegex: _React['default'].PropTypes.instanceOf(RegExp),
+        suggestions: _React['default'].PropTypes.array,
+        onSuggest: _React['default'].PropTypes.func,
+        renderSuggestions: _React['default'].PropTypes.func,
+        onlySuggested: _React['default'].PropTypes.bool,
+        suggestionsProps: _React['default'].PropTypes.object
       },
       enumerable: true
     }, {
@@ -328,7 +481,16 @@
         tagProps: { className: 'react-tagsinput-tag', classNameRemove: 'react-tagsinput-remove' },
         onlyUnique: false,
         maxTags: -1,
-        validationRegex: /.*/
+        validationRegex: /.*/,
+        suggestions: [],
+        onSuggest: defaultOnSuggest,
+        renderSuggestions: defaultRenderSuggestions,
+        onlySuggested: false,
+        suggestionsProps: {
+          className: 'react-tagsinput-suggestions',
+          classNameSuggestion: 'react-tagsinput-suggestion',
+          classNameSelected: 'react-tagsinput-suggestion-selected'
+        }
       },
       enumerable: true
     }]);
@@ -338,4 +500,3 @@
 
   module.exports = TagsInput;
 });
-
