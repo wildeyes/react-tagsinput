@@ -190,13 +190,20 @@ class TagsInput extends React.Component {
     return false
   }
 
+  _getInput () {
+    let DOMElementName = this.refs.input.constructor.toString().split('(')[0].replace('function ', '')
+    return DOMElementName === 'AutosuggestContainer' ? this.refs.input.input : this.refs.input
+  }
+
   focus () {
-    this.refs.input.focus()
+    this._getInput().focus()
+
     this.handleOnFocus()
   }
 
   blur () {
-    this.refs.input.blur()
+    this._getInput().blur()
+
     this.handleOnBlur()
   }
 

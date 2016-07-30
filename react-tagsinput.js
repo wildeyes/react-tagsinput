@@ -303,15 +303,23 @@
         return false;
       }
     }, {
+      key: '_getInput',
+      value: function _getInput() {
+        var DOMElementName = this.refs.input.constructor.toString().split('(')[0].replace('function ', '');
+        return DOMElementName === 'AutosuggestContainer' ? this.refs.input.input : this.refs.input;
+      }
+    }, {
       key: 'focus',
       value: function focus() {
-        this.refs.input.focus();
+        this._getInput().focus();
+
         this.handleOnFocus();
       }
     }, {
       key: 'blur',
       value: function blur() {
-        this.refs.input.blur();
+        this._getInput().blur();
+
         this.handleOnBlur();
       }
     }, {
