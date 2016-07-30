@@ -16,6 +16,7 @@
     "babel-preset-react": "^6.5.0",
     "babel-preset-stage-0": "^6.5.0",
     "babel-register": "^6.8.0",
+    "browser-sync": "^2.13.0",
     "isparta": "^4.0.0",
     "jsdom": "^7.0.2",
     "mocha": "^2.3.3",
@@ -29,6 +30,7 @@
   },
   "scripts": {
     "test": "standard src/index.js && mocha --compilers js:babel-register",
+    "serve": "browser-sync start --server example --files=\"example/*.*\" --no-open --no-ui --no-ghost-mode",
     "build": "babel --module-id ReactTagsInput -m umd src/index.js > react-tagsinput.js",
     "build-example": "reactpack --no-extract --no-source-map --no-html example/index.js example/",
     "build-example-watch": "reactpack -w --no-extract --no-source-map --no-html example/index.js example/",
